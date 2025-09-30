@@ -55,12 +55,10 @@ echo "$(date +%Y-%m-%d\ %H:%M:%S) - Script started with arguments: $@" >> "$SCRI
 echo "--- ENVIRONMENT SETUP COMPLETE ---"
 
 # 3.1. Вычисление размера папки LOG_DIR
-# Используем du для получения размера в мегабайтах (-m)
 LOG_SIZE_MB=$(du -sm "$LOG_DIR" | awk '{print $1}')
 echo "Monitored Directory Size: ${LOG_SIZE_MB}MB" >> "$SCRIPT_LOG"
 
 # 3.2. Вычисление процента заполнения раздела, на котором находится папка
-# $4 - процент использования, $5 - точка монтирования
 DISK_INFO=$(df "$LOG_DIR" | awk 'NR==2 {print $5, $1}')
 DISK_PERCENT=$(echo "$DISK_INFO" | awk '{print $1}' | sed 's/%//')
 
@@ -88,21 +86,6 @@ if [ "$NEED_ARCHIVE" = true ]; then
 
     echo "--- STARTING FILE SELECTION ---"
 
-    # 4.1-4.3. Поиск, сортировка по mtime (старый - первый), выбор M файлов
-    # -type f: только файлы
-    # -print0: разделение результатов символом null для безопасности (работа с пробелами в именах)
-    # | xargs -0 ls -lt: сортировка по времени (lt), -0 для обработки null-разделителей
-    # | grep -v ^d: исключаем директории, если ls -l выводит их
-    # | tail -n "$COUNT_M": выбираем M самых старых
-
-    # Внимание: find -type f -mtime +0 | sort | head -n M - это надёжный способ
-    # сортировки по дате изменения (старые-первые). ls -lt может быть ненадёжным
-    # для очень большого количества файлов.
-
-    # Используем более надёжный метод: find с форматированием.
-    # %T@ - время модификации в секундах
-    # %p - имя файла
-    # sort -n: сортировка по числовому значению (времени)
     OLDEST_FILES=$(
         find "$LOG_DIR" -type f -printf '%T@\t%p\n' |
         sort -n |
